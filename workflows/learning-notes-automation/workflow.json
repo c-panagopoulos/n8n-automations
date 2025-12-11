@@ -1,0 +1,268 @@
+{
+  "name": "NC Notes → Deck Inbox (v1)",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<NEXTCLOUD_INSTANCE>/index.php/apps/deck/api/v1.0/boards/2/stacks/8/cards",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json[\"title\"]}}"
+            },
+            {
+              "name": "type",
+              "value": "plain"
+            },
+            {
+              "name": "order",
+              "value": "1"
+            },
+            {
+              "name": "description",
+              "value": "={{$json[\"description\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "30c432d1-5187-4c15-ba42-83db867f079d",
+      "name": "Create Deck Card",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        208
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "text": "You will receive an image of handwritten or printed notes, possibly in Greek.\n\n1. Extract all text accurately.\n2. Translate everything into clear English.\n3. Clean up grammar and structure.\n4. Rewrite the content using **this Markdown template**:\n\n# 📘 Concept to Learn: <write a short title>\n\n**Tags:** `javascript` `frontend` `basics` `study`\n\n---\n\n### 📋 Learning Checklist\n- [ ] Add 3–5 learning objectives based on the note\n\n---\n\n### 📚 Key Points\nWrite bullet points explaining the main concepts in simple English.\n\n---\n\n### 📝 Summary\nWrite a short 3–5 sentence summary of the concept.\n",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        208
+      ],
+      "id": "8cd17019-f7d7-420c-be4c-50d6867ee52c",
+      "name": "Analyze image",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1️⃣ Get the real AI message object\n// The data comes in as { \"0\": { id, content: [ { text: \"...\" } ] } }\nconst root = $json;\nconst msg = root[\"0\"] || root;\n\nlet fullText = \"\";\n\n// Main path: msg.content[0].text\nif (msg && Array.isArray(msg.content) && msg.content[0]?.text) {\n  fullText = msg.content[0].text;\n}\n\n// Fallback just in case the format changes\nif (!fullText && typeof msg.text === \"string\") {\n  fullText = msg.text;\n}\n\nif (!fullText) {\n  fullText = \"\";\n}\n\n// 2️⃣ Extract first markdown header as title\n// Example: \"# 📘 Concept to Learn: Introduction to Bootstrap\"\nlet title = \"New Note\";\nconst titleMatch = fullText.match(/^#\\s*(.+)$/m);\nif (titleMatch) {\n  title = titleMatch[1].trim();\n}\n\n// 3️⃣ Extract tags from line starting with \"**Tags:**\"\nlet tags = [];\nconst tagLineMatch = fullText.match(/\\*\\*Tags:\\*\\*([^\\n]*)/);\n\nif (tagLineMatch && tagLineMatch[1]) {\n  tags = tagLineMatch[1]\n    .split(\"`\")          // split around backticks\n    .map(s => s.trim())  // trim spaces\n    .filter(Boolean);    // remove empty entries\n}\n\n// 4️⃣ Description = full text without the title line\nlet description = fullText.replace(/^#.*$/m, \"\").trim();\n\n// 5️⃣ Build a simple clickable link to the *final* file location\nlet imageLine = \"\";\ntry {\n  const encodedInboxPath = $node[\"List a folder\"].json[\"path\"];\n  if (encodedInboxPath && typeof encodedInboxPath === \"string\") {\n    // \"My%20notes/Inbox/bootstrap.jpg\" -> \"My%20notes/bootstrap.jpg\"\n    const encodedFinalPath = encodedInboxPath.replace(\"/Inbox/\", \"/\");\n\n    // ⚠️ Change these if your domain / user changes\n    const baseUrl = \"https://<NEXTCLOUD_INSTANCE>\";\n    const username = \"<NEXTCLOUD_USERNAME>\";\n\n    const imageUrl =\n      `${baseUrl}/remote.php/dav/files/${encodeURIComponent(username)}/` +\n      encodedFinalPath;\n\n    // Markdown link (no inline image, to avoid endless spinner)\n    imageLine =\n      `\\n\\n---\\n\\n` +\n      `📎 Original image: [Open image in new tab](${imageUrl})`;\n  }\n} catch (e) {\n  // If anything fails, just skip the link\n  imageLine = \"\";\n}\n\n// Append image info (if available) to the description\ndescription = description + imageLine;\n\n// 6️⃣ Keep the original item so we don't lose the binary image\nlet item = $input.first();\n\nitem.json = {\n  title,\n  description,\n  tags,\n};\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        208
+      ],
+      "id": "656a8909-6165-4215-90d2-cba560fb1c18",
+      "name": "Prepare Title & Description"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1296,
+        208
+      ],
+      "id": "d54eda9f-f0a5-496b-89a9-75b168e031af",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "list",
+        "path": "/My notes/Inbox/"
+      },
+      "type": "n8n-nodes-base.nextCloud",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        208
+      ],
+      "id": "1f5f0a77-7f08-45f9-8887-9723ec22d415",
+      "name": "List a folder",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "path": "={{ '/' + decodeURIComponent($node[\"List a folder\"].json[\"path\"]) }}",
+        "toPath": "={{ \n  '/' + decodeURIComponent(\n    $node[\"List a folder\"].json[\"path\"]\n  ).replace('/Inbox/', '/')\n}}"
+      },
+      "type": "n8n-nodes-base.nextCloud",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        208
+      ],
+      "id": "97b180de-8018-4d7c-a1d0-58a2e5e705ca",
+      "name": "Move a file",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/<DISCORD_WEBHOOK_ID>/<DISCORD_WEBHOOK_TOKEN>",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": \"📌 **New Deck Card Created!**\\n**Title:** {{ $node['Create Deck Card'].json['title'] }}\\nYou can upload the next note image now. ✅\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        48,
+        208
+      ],
+      "id": "9f487a06-1f93-447f-8aab-a0dc3a1ebe56",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "=https://<NEXTCLOUD_INSTANCE>/remote.php/dav/files/<NEXTCLOUD_USERNAME>/{{$json[\"path\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "a00a04c2-18d4-4cf9-854d-8edd72e9d327",
+      "name": "Get Image from Nextcloud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -912,
+        208
+      ],
+      "credentials": {}
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prepare Title & Description": {
+      "main": [
+        [
+          {
+            "node": "Create Deck Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Prepare Title & Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Deck Card": {
+      "main": [
+        [
+          {
+            "node": "Move a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List a folder": {
+      "main": [
+        [
+          {
+            "node": "Get Image from Nextcloud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "List a folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move a file": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image from Nextcloud": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedPerExecution": 7
+  },
+  "versionId": "a698c7a7-50c2-4302-abe4-5bf4a32c7b34",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b137e81c2c180ccb66c169eb9481e164ba5d1e944cc22e5405f9e0c07d4f6d04"
+  },
+  "id": "0xRKLbV0MZRw5dnk",
+  "tags": []
+}
