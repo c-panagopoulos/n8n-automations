@@ -1,5 +1,7 @@
 # 📝 AI-Powered Learning Notes Automation
 
+A real-world automation I built to streamline my web development study routine.
+
 > Automatically transform handwritten notes into structured, searchable digital cards
 
 An n8n workflow that converts photos of handwritten study notes into beautifully formatted Nextcloud Deck cards using OpenAI Vision API. Built to solve a real problem: maintaining organized learning notes while working full-time.
@@ -9,6 +11,11 @@ An n8n workflow that converts photos of handwritten study notes into beautifully
 [![Nextcloud](https://img.shields.io/badge/Nextcloud-Deck-lightblue)](https://nextcloud.com)
 
 ---
+
+### 🔧 Features at a Glance
+- Converts handwritten study notes into structured Deck cards automatically  
+- Extracts, translates, and formats text using AI  
+- Runs fully locally on my self-hosted infrastructure  
 
 ## 🎯 The Problem
 
