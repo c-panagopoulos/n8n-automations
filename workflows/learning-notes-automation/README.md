@@ -47,22 +47,22 @@ A fully automated n8n workflow that:
 ## 🎬 How It Works
 
 ### Before: Manual Process
-![Handwritten Note Example](screenshots/before-handwritten-note.jpg)
+![Handwritten Note Example](screenshots/before-handwritten-note.png)
 *Raw handwritten note about CSS Grid*
 
 ### After: Automated Result
-![Generated Deck Card](screenshots/after-deck-card.jpg)
+![Generated Deck Card](screenshots/after-deck-card.png)
 *Automatically generated, formatted, and organized*
 
 ### My Nextcloud Deck Board
-![Full Deck Board](screenshots/nextcloud-deck-board.jpg)
+![Full Deck Board](screenshots/nextcloud-deck-board.png)
 *200+ organized learning cards across different topics*
 
 ---
 
 ## 🔄 Workflow Steps
 
-![n8n Workflow Diagram](screenshots/n8n-workflow-diagram.jpg)
+![n8n Workflow Diagram](screenshots/n8n-workflow-diagram.png)
 
 ### 1. **Schedule Trigger**
 Checks inbox folder every 60 seconds for new images
