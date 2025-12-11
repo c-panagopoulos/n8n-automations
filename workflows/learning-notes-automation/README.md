@@ -48,7 +48,7 @@ A fully automated n8n workflow that:
 
 ### Before: Manual Process
 ![Handwritten Note Example](screenshots/before-handwritten-note.png)
-*Raw handwritten note about CSS Grid*
+*Raw handwritten note about Javascript Functions*
 
 ### After: Automated Result
 ![Generated Deck Card](screenshots/after-deck-card.png)
@@ -56,7 +56,7 @@ A fully automated n8n workflow that:
 
 ### My Nextcloud Deck Board
 ![Full Deck Board](screenshots/nextcloud-deck-board.png)
-*200+ organized learning cards across different topics*
+*Dozens of structured learning cards across different topics in my Nextcloud Deck board, now automatically expanded by this workflow*
 
 ---
 
@@ -153,14 +153,14 @@ easier than with Flexbox alone.
 
 ## 📊 Real-World Impact
 
-Since implementing this system (November 2024):
+Although this workflow is newly implemented, the benefits are already clear:
 
-- ✅ **150+ notes processed** automatically
-- ✅ **~25 hours saved** (9 min × 150 notes)
-- ✅ **Zero manual formatting** required
-- ✅ **Consistent structure** across all notes
-- ✅ **Instant searchability** via tags
-- ✅ **Never lose context** - original image always linked
+- ✅ **Dozens of notes processed automatically**
+- ⏱️ **~9 minutes saved per note**, removing repetitive work
+- 🎯 **Zero manual formatting** required going forward
+- 📐 **Consistent structure** across all new cards
+- 🔍 **Improved organization and searchability**
+- 🖼️ **Original images linked** for full context
 
 ---
 
