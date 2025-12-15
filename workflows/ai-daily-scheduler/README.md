@@ -236,7 +236,6 @@ Building this workflow helped me practice:
 - [ ] Automatic sleep score ingestion
 - [ ] Priority-based task weighting
 - [ ] Light social scheduling support
-- [ ] Statistics on planned vs completed sessions
 
 ---
 
