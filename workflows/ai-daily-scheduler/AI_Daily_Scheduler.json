@@ -1,0 +1,154 @@
+{
+  "name": "AI Daily Scheduler",
+  "nodes": [
+    {
+      "name": "Sleep Score Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/sleep-score"
+      },
+      "position": [-200, 0]
+    },
+    {
+      "name": "Fetch Routine ICS",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "https://<YOUR_NEXTCLOUD_DOMAIN>/remote.php/dav/calendars/<USER>/<CALENDAR>/?export",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "response": {
+            "responseFormat": "text"
+          }
+        }
+      },
+      "position": [0, 0]
+    },
+    {
+      "name": "Prepare AI Input",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "today",
+              "value": "={{$now.toFormat('yyyy-LL-dd')}}",
+              "type": "string"
+            },
+            {
+              "name": "timezone",
+              "value": "Europe/Athens",
+              "type": "string"
+            },
+            {
+              "name": "sleepScore",
+              "value": "={{$json.body.sleepScore}}",
+              "type": "string"
+            },
+            {
+              "name": "ics",
+              "value": "={{$json.data}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "position": [200, 0]
+    },
+    {
+      "name": "Message a model",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "parameters": {
+        "modelId": "gpt-4.1-mini",
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an AI scheduling assistant.\n\nYou will receive a JSON object containing:\n- today (YYYY-MM-DD)\n- timezone (e.g. \"Europe/Athens\")\n- sleepScore (0–100)\n- ics (full calendar content as ICS text)\n\nYour task:\nReturn ONLY valid JSON (no markdown) that matches this exact schema:\n\n{\n  \"events\": [\n    {\"type\":\"study\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"study\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"headspace_morning\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"headspace_evening\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"entertainment\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"reading\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"gym\",\"enabled\":false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"},\n    {\"type\":\"developer_project\",\"enabled\":true|false,\"summary\":\"\",\"description\":\"\",\"dtstart\":\"\",\"dtend\":\"\"}\n  ],\n  \"task\": {\"createTask\": true|false, \"summary\":\"\", \"description\":\"\", \"due\":\"\"}\n}\n\nRules:\n- Output MUST be valid JSON only.\n- If enabled=false → summary/description/dtstart/dtend MUST be empty strings.\n- If enabled=true → all fields MUST be filled.\n- dtstart/dtend MUST be valid ISO datetimes with timezone offset (e.g. 2025-12-15T17:30:00+02:00).\n- Events must not overlap each other.\n- Events must not overlap any blocked intervals found in the provided ICS.\n- Study events must include a Pomodoro plan inside description, e.g. \"Pomodoro plan: 3 cycles × (25m focus + 5m break)\".\n\nThis prompt is intentionally generic. Adjust scheduling rules as needed for your own workflow."
+            },
+            {
+              "role": "user",
+              "content": "={{JSON.stringify($json)}}"
+            }
+          ]
+        }
+      },
+      "position": [400, 0]
+    },
+    {
+      "name": "Parse AI JSON",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const raw = $json.output[0].content[0].text.replace(/```json|```/g, '').trim(); return [{ json: JSON.parse(raw) }];"
+      },
+      "position": [600, 0]
+    },
+    {
+      "name": "Expand Events",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "return ($json.events || []).map(e => ({ json: e }));"
+      },
+      "position": [800, 0]
+    },
+    {
+      "name": "Enabled Events Only",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.enabled}}",
+              "operator": { "type": "boolean", "operation": "true" }
+            },
+            {
+              "leftValue": "={{$json.dtstart}}",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            },
+            {
+              "leftValue": "={{$json.dtend}}",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ]
+        }
+      },
+      "position": [1000, 0]
+    },
+    {
+      "name": "Normalize Dates for ICS",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "// ISO → ICS datetime normalization logic"
+      },
+      "position": [1200, 0]
+    },
+    {
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "PUT",
+        "url": "https://<YOUR_NEXTCLOUD_DOMAIN>/remote.php/dav/calendars/<USER>/<CALENDAR>/{{ $json.type }}-{{ Date.now() }}.ics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/calendar",
+        "body": "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:{{ $json.dtstart }}\nDTEND:{{ $json.dtend }}\nSUMMARY:{{ $json.summary }}\nDESCRIPTION:{{ $json.description }}\nEND:VEVENT\nEND:VCALENDAR"
+      },
+      "position": [1400, 0]
+    }
+  ],
+  "connections": {
+    "Sleep Score Trigger": { "main": [[{ "node": "Fetch Routine ICS" }]] },
+    "Fetch Routine ICS": { "main": [[{ "node": "Prepare AI Input" }]] },
+    "Prepare AI Input": { "main": [[{ "node": "Message a model" }]] },
+    "Message a model": { "main": [[{ "node": "Parse AI JSON" }]] },
+    "Parse AI JSON": { "main": [[{ "node": "Expand Events" }]] },
+    "Expand Events": { "main": [[{ "node": "Enabled Events Only" }]] },
+    "Enabled Events Only": { "main": [[{ "node": "Normalize Dates for ICS" }]] },
+    "Normalize Dates for ICS": { "main": [[{ "node": "Create Calendar Event" }]] }
+  }
+}
+
