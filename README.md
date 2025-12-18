@@ -53,7 +53,7 @@ Key design goals:
 ---
 
 ## ⭐ Why This Repo Exists
-As a self-taught web developer balancing full-time work and structured learning, automation helps reduce cognitive load and eliminate repetitive tasks.
+As an aspiring web developer balancing full-time work and structured learning, automation helps reduce cognitive load and eliminate repetitive tasks.
 
 This repository serves two purposes:
 1. Document workflows that genuinely improved my learning and productivity
